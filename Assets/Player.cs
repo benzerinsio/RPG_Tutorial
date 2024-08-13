@@ -1,7 +1,14 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Assertions.Must;
 
 public class Player : MonoBehaviour
 {
+    public bool isBusy { get; private set; }
+
+    [Header("Attack Details")]
+    public float[] attackMovement;
+
     [Header("Move Info")]
     public float moveSpeed = 8f;
     public float jumpForce = 12f;
@@ -22,6 +29,11 @@ public class Player : MonoBehaviour
     [Space]
     [SerializeField] private LayerMask whatIsGround;
 
+    [Header("Attack Info")]
+    public int comboCounter = 0;
+    [SerializeField] private float attackBuffer = 0.4f;
+    [SerializeField] public float attackTimer;
+
     public int facingDirection { get; private set; } = 1;
     private bool facingRight = true;
 
@@ -39,7 +51,11 @@ public class Player : MonoBehaviour
     public PlayerAirState airState { get; private set; }
 
     public PlayerWallSlideState wallSlide { get; private set; }
+    public PlayerWallJumpState wallJump { get; private set; }
     public PlayerDashState dashState { get; private set; }
+
+
+    public PlayerPrimaryAttack primaryAttack { get; private set; }
 
     #endregion
 
@@ -51,9 +67,12 @@ public class Player : MonoBehaviour
         idleState = new PlayerIdleState(this, stateMachine, "Idle");
         moveState = new PlayerMoveState(this, stateMachine, "Move");
         jumpState = new PlayerJumpState(this, stateMachine, "Jump");
-        airState  = new PlayerAirState(this, stateMachine, "Jump");
+        airState = new PlayerAirState(this, stateMachine, "Jump");
         dashState = new PlayerDashState(this, stateMachine, "Dash");
         wallSlide = new PlayerWallSlideState(this, stateMachine, "WallSlide");
+        wallJump = new PlayerWallJumpState(this, stateMachine, "Jump");
+
+        primaryAttack = new PlayerPrimaryAttack(this, stateMachine, "Attack");
     }
 
     private void Start()
@@ -68,10 +87,39 @@ public class Player : MonoBehaviour
         stateMachine.currentState.Update();
 
         CheckForDashInput();
+        CheckForAttackInput();
+    }
+
+    public IEnumerator BusyFor(float _seconds)
+    {
+        isBusy = true;
+
+        yield return new WaitForSeconds(_seconds);
+
+        isBusy = false;
+    }
+
+    public void AnimationTrigger() => stateMachine.currentState.AnimationFinishTrigger();
+
+    private void CheckForAttackInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Mouse0))
+        {
+            attackTimer = attackBuffer;
+        }
+        attackTimer -= Time.deltaTime;
+        if (comboCounter > 1)
+        {
+            comboCounter = -1;
+        }
     }
 
     private void CheckForDashInput()
     {
+        if (isWallDetected())
+        {
+            return;
+        }
         dashUsageTimer -= Time.deltaTime;
 
         if (Input.GetKeyDown(KeyCode.LeftShift) && dashUsageTimer < 0)
@@ -85,12 +133,17 @@ public class Player : MonoBehaviour
             stateMachine.ChangeState(dashState);
         }
     }
+
+    #region Velocity
+
     public void SetVelocity(float _xVelocity, float _yVelocity)
     {
         rb.velocity = new Vector2(_xVelocity, _yVelocity);
         FlipController(_xVelocity);
     }
+    #endregion
 
+    #region Collision
     public bool isGroundDetected()
     {
         return Physics2D.Raycast(groundCheck.position, Vector2.down, groundCheckDistance, whatIsGround);
@@ -104,9 +157,11 @@ public class Player : MonoBehaviour
     private void OnDrawGizmos()
     {
         Gizmos.DrawLine(groundCheck.position, new Vector3(groundCheck.position.x, groundCheck.position.y - groundCheckDistance));
-        Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y)); 
+        Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y));
     }
+    #endregion
 
+    #region Flip
     public void Flip()
     {
         facingDirection = facingDirection * -1;
@@ -116,11 +171,14 @@ public class Player : MonoBehaviour
 
     public void FlipController(float _x)
     {
-        if(_x > 0 && !facingRight)
+        if (_x > 0 && !facingRight)
         {
             Flip();
-        } else if (_x < 0 && facingRight){
+        }
+        else if (_x < 0 && facingRight)
+        {
             Flip();
         }
     }
+    #endregion
 }

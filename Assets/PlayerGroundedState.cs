@@ -23,6 +23,11 @@ public class PlayerGroundedState : PlayerState
     {
         base.Update();
 
+        if (player.attackTimer >= 0)
+        {
+            stateMachine.ChangeState(player.primaryAttack);
+        }
+
         if (!player.isGroundDetected())
             stateMachine.ChangeState(player.airState);
 
