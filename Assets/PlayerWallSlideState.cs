@@ -32,9 +32,9 @@ public class PlayerWallSlideState : PlayerState
         }
 
         if (yInput < 0)
-            rb.velocity = new UnityEngine.Vector2(0, rb.velocity.y);
+            rb.linearVelocity = new UnityEngine.Vector2(0, rb.linearVelocity.y);
         else
-            rb.velocity = new UnityEngine.Vector2(0, rb.velocity.y * .7f);
+            rb.linearVelocity = new UnityEngine.Vector2(0, rb.linearVelocity.y * .7f);
 
         if (player.isGroundDetected())
         {
